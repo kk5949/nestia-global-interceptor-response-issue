@@ -1,47 +1,52 @@
-Nestia Global Response Wrapper Type Safety Issue
-이 저장소는 Nestia에서 글로벌 인터셉터를 사용할 때 발생하는 타입 안전성 문제를 재현하는 최소 예제입니다.
+Nestia Global Response Wrapper Type Safety Enhancement Proposal
+Feature Request for Ensuring Type Safety with NestJS Global Interceptors and Nestia
 
-🚨 문제 상황
-현재 Nestia를 사용하면서 글로벌 인터셉터를 통한 응답 래핑 시 타입 안전성 문제가 발생하고 있습니다. 이는 매우 일반적인 패턴임에도 불구하고 Nestia에서 깔끔하게 지원되지 않아 개발자 경험을 저해하고 있습니다.
+📋 Problem Summary
+Current Situation: Type mismatch occurs when applying global response wrapper interceptors with Nestia
+Impact: Forced to abandon type safety (as any usage) or introduce code duplication
+Proposal: Add global response wrapper type specification feature in Nestia configuration
 
-핵심 문제점
-컨트롤러 반환 타입: ResponseSampleDto
+🚨 Problem Description
+Currently, when using Nestia with global interceptors for response wrapping, type safety issues arise. Despite this being a very common pattern, Nestia doesn't provide clean support for it, which degrades the developer experience.
 
-실제 응답 타입: SampleResponseInterface<ResponseSampleDto> (인터셉터 적용 후)
+Core Issues
+Controller Return Type: ResponseSampleDto
 
-타입 불일치로 인한 as any 사용 필요
+Actual Response Type: SampleResponseInterface<ResponseSampleDto> (after interceptor application)
 
-📁 프로젝트 구조
+Type mismatch requiring as any usage
+
+📁 Project Structure
 text
 src/
 ├── samples/
-│   ├── samples.controller.ts    # 문제가 발생하는 컨트롤러
-│   ├── samples.service.ts       # 서비스 로직
+│   ├── samples.controller.ts    # Controller where the issue occurs
+│   ├── samples.service.ts       # Service logic
 │   └── dto/
 │       └── create-sample.dto.ts
 ├── interceptors/
-│   ├── sample-response.interface.ts    # 표준 응답 타입 정의
-│   └── sample-response.interceptor.ts  # 글로벌 인터셉터
-├── main.ts                      # 글로벌 인터셉터 등록
+│   ├── sample-response.interface.ts    # Standard response type definition
+│   └── sample-response.interceptor.ts  # Global interceptor
+├── main.ts                      # Global interceptor registration
 └── app.module.ts
-🔧 설치 및 실행
+🔧 Installation and Setup
 bash
-# 의존성 설치
+# Install dependencies
 npm install
 
-# TypeScript 패치 설치 (Nestia 필수)
+# Install TypeScript patches (Required for Nestia)
 npm run prepare
 
-# 프로젝트 빌드
+# Build project
 npm run build
 
-# 개발 서버 실행
+# Start development server
 npm run start:dev
 
-# Swagger 문서 생성
+# Generate Swagger documentation
 npm run nestia
-📋 현재 구현된 해결 방법들과 문제점
-1. as any 타입 캐스팅 사용
+📋 Current Implementation Methods and Their Issues
+1. Using as any Type Casting
    typescript
    @TypedRoute.Get('with-return-any')
    sampleWithReturnAny(
@@ -49,17 +54,17 @@ npm run nestia
    ): SampleResponseInterface<ResponseSampleDto> {
    return this.samplesService.sample(createSampleDto) as any;
    }
-   ❌ 문제점:
+   ❌ Issues:
 
-타입 안전성 완전 포기: 컴파일 타임 타입 체크 우회
+Complete abandonment of type safety: Bypasses compile-time type checking
 
-런타임 오류 위험: 실제 타입과 선언된 타입의 불일치
+Runtime error risk: Mismatch between actual and declared types
 
-코드 가독성 저하: 개발 의도가 명확하지 않음
+Reduced code readability: Development intent is unclear
 
-유지보수성 악화: 타입 변경 시 문제 발견 어려움
+Poor maintainability: Difficult to detect issues when types change
 
-2. 서비스 레이어에서 직접 래핑
+2. Direct Wrapping in Service Layer
    typescript
    sampleWrapped(createSampleDto: CreateSampleDto): SampleResponseInterface<ResponseSampleDto> {
    const result = {
@@ -70,17 +75,17 @@ npm run nestia
    };
    return createSampleResponse(result, '', 200);
    }
-   ❌ 문제점:
+   ❌ Issues:
 
-코드 중복: 모든 서비스 메서드에서 반복적인 래핑 작업
+Code duplication: Repetitive wrapping work in all service methods
 
-일관성 문제: 개발자가 실수로 래핑을 빼먹을 가능성
+Consistency problems: Developers might forget to wrap responses
 
-비즈니스 로직 오염: 순수한 비즈니스 로직과 응답 형식이 혼재
+Business logic pollution: Pure business logic mixed with response formatting
 
-유지보수 부담: 응답 형식 변경 시 모든 서비스 수정 필요
+Maintenance burden: All services need modification when response format changes
 
-3. 글로벌 인터셉터 + 타입 불일치
+3. Global Interceptor + Type Mismatch
    typescript
    @Injectable()
    export class GlobalResponseInterceptor<T> implements NestInterceptor<T, SampleResponseInterface<T>> {
@@ -94,16 +99,16 @@ npm run nestia
    );
    }
    }
-   ❌ 문제점:
+   ❌ Issues:
 
-타입 시스템과 실제 동작 불일치: 컨트롤러 반환 타입과 실제 응답 타입이 다름
+Type system and actual behavior mismatch: Controller return type differs from actual response type
 
-Swagger 문서 부정확성: Nestia가 생성하는 문서와 실제 응답 구조 불일치
+Inaccurate Swagger documentation: Mismatch between Nestia-generated docs and actual response structure
 
-개발자 혼란: 예상 타입과 실제 타입의 차이로 인한 디버깅 어려움
+Developer confusion: Debugging difficulties due to differences between expected and actual types
 
-🎯 기대하는 해결책
-Nestia 설정에서 글로벌 응답 래퍼 타입을 지정할 수 있는 기능을 제안합니다:
+🎯 Expected Solution
+We propose a feature to specify global response wrapper types in Nestia configuration:
 
 typescript
 // nestia.config.ts
@@ -113,51 +118,46 @@ output: "src/api",
 swagger: {
 // ...
 },
-// 🆕 제안하는 새로운 설정
+// 🆕 Proposed new configuration
 globalResponseWrapper: {
 type: "SampleResponseInterface<T>",
 path: "./interceptors/sample-response.interface.ts"
 }
 };
-✅ 이렇게 설정하면:
-컨트롤러에서는 원본 타입 반환: ResponseSampleDto
+✅ With this configuration:
+Controllers return original types: ResponseSampleDto
 
-Nestia가 자동으로 래퍼 타입 적용: SampleResponseInterface<ResponseSampleDto>
+Nestia automatically applies wrapper type: SampleResponseInterface<ResponseSampleDto>
 
-Swagger 문서 정확성 보장: 실제 응답 구조와 문서 일치
+Swagger documentation accuracy guaranteed: Actual response structure matches documentation
 
-타입 안전성 유지: as any 사용 불필요
+Type safety maintained: No need for as any usage
 
-🧪 테스트 방법
-API 엔드포인트 테스트
+🧪 Testing Methods
+API Endpoint Testing
 bash
-# 기본 샘플 생성 (타입 불일치 문제 발생)
-curl -X POST http://localhost:3000/samples \
--H "Content-Type: application/json" \
--d '{"name":"test","title":"Test Title","description":"Test Description","age":25}'
-
-# as any 사용 예제
-curl -X GET http://localhost:3000/samples/with-return-any \
--H "Content-Type: application/json" \
--d '{"name":"test","title":"Test Title","description":"Test Description","age":25}'
-
-# 서비스에서 래핑한 예제
-curl -X GET http://localhost:3000/samples/wrapped \
--H "Content-Type: application/json" \
--d '{"name":"test","title":"Test Title","description":"Test Description","age":25}'
-예상 응답 (글로벌 인터셉터 적용 후)
-json
-{
-"data": {
+# Basic sample creation (type mismatch issue occurs)
+curl -X 'POST' \
+'http://localhost:3000/api/samples' \
+-H 'accept: application/json' \
+-H 'Content-Type: application/json' \
+-d '{
 "name": "test",
-"title": "Test Title",
-"description": "Test Description",
-"age": 25
-},
-"message": "요청이 성공적으로 처리되었습니다.",
-"statusCode": 200
-}
-🔍 환경 정보
+"title": "test",
+"description": "test",
+"age": 10
+}'
+
+# Example using as any
+curl -X 'GET' \
+'http://localhost:3000/api/samples/with-return-any?name=kim&title=title&description=desc&age=10' \
+-H 'accept: application/json'
+
+# Example wrapped in service
+curl -X 'GET' \
+'http://localhost:3000/api/samples/wrapped?name=test&title=test&description=test&age=111' \
+-H 'accept: application/json'
+🔍 Environment Information
 Node.js: 24.x
 
 NestJS: 11.x
@@ -166,20 +166,60 @@ Nestia: 7.x
 
 TypeScript: 5.x
 
-💭 커뮤니티 요청사항
-기존 해결책 확인: 혹시 현재 이런 문제를 해결할 수 있는 방법이 이미 존재한다면 안내 부탁드립니다.
+🤝 Proposal to Nestia Community
+Hello Nestia development team and community members,
 
-향후 지원 계획: 만약 아직 지원되지 않는다면, 향후 이런 기능을 제공할 의사가 있으신지 궁금합니다.
+First, thank you for developing such an excellent library. Nestia's type safety and performance improvements are truly impressive.
 
-설계 방향 논의: 제안한 방식 외에 더 나은 접근 방법이 있다면 함께 논의하고 싶습니다.
+Current Situation Inquiry
+Regarding type safety issues when using global response wrapper patterns, we would like to inquire about the following:
 
-🎯 왜 이 기능이 중요한가?
-일반적인 패턴: 대부분의 REST API에서 표준 응답 형식 사용
+Existing Solution Check: If there's already a way to solve this problem, please guide us.
 
-타입 안전성: Nestia의 핵심 가치인 타입 안전성과 부합
+Future Support Plans: If not currently supported, are there plans to provide this feature in the future?
 
-개발자 경험: 번거로운 우회 방법 없이 직관적인 개발 가능
+Design Direction Discussion: If there are better approaches than our proposed method, we'd like to discuss them together.
 
-유지보수성: 일관된 응답 형식과 깔끔한 코드 구조
+Proposed Solution
+We propose adding the following configuration option:
 
-현재 상황에서는 타입 안전성을 포기하거나 코드 중복을 감수해야 하는 상황입니다. Nestia의 철학에 맞는 깔끔한 해결책이 제공된다면 많은 개발자들이 혜택을 받을 것으로 생각합니다.
+typescript
+// nestia.config.ts
+const config: INestiaConfig = {
+// ... existing configuration
+globalResponseWrapper: {
+type: "SampleResponseInterface<T>",
+path: "./interceptors/sample-response.interface.ts"
+}
+};
+If this feature is implemented:
+
+Controllers can return original types
+
+Nestia automatically applies wrapper types
+
+Swagger documentation accuracy is guaranteed
+
+No need to use as any
+
+🎯 Why This Feature Is Important
+Common Pattern: Most REST APIs use standard response formats
+
+Type Safety: Aligns with Nestia's core value of type safety
+
+Developer Experience: Enables intuitive development without cumbersome workarounds
+
+Maintainability: Consistent response format and clean code structure
+
+🎯 Conclusion
+We hope this proposal helps the development of the Nestia community and ecosystem.
+
+Global response wrapper patterns are very commonly used in actual production environments, and providing type-safe support for this would benefit many developers.
+
+In the current situation, we must either abandon type safety or accept code duplication. If a clean solution that aligns with Nestia's philosophy is provided, many developers would benefit from it.
+
+Please feel free to contact us if you need feedback or additional discussion.
+
+Thank you.
+
+Translated by AI

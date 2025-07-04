@@ -31,6 +31,8 @@ async function bootstrap() {
         new ClassSerializerInterceptor(app.get(Reflector))
     );
 
+    app.setGlobalPrefix('api', {});
+
     await app.listen(process.env.PORT ?? 3000);
 }
 
